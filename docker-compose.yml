@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: build
+    build:
     restart: always
     ports:
       - "127.0.0.1:5678:5678"
