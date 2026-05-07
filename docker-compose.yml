@@ -1,6 +1,9 @@
 services:
   n8n:
-    image: docker.n8n.io/n8nio/n8n:latest
+    image: n8nio/n8n:latest
+    user: "1000:1000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: always
     ports:
       - "5678:5678"
@@ -21,12 +24,15 @@ services:
       - traefik.http.middlewares.n8n.headers.STSPreload=true
       - traefik.http.routers.n8n.middlewares=n8n@docker
     environment:
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_RUNNERS_ENABLED=true
+     # - N8N_RESTRICT_FILE_ACCESS_TO=/home/node/.n8n-files,/home/node/.n8n
+      - NODES_EXCLUDE=[]
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+      - N8N_STORAGE_PATH=/home/node/.n8n-files/temp
       - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
       - N8N_PORT=5678
       - N8N_PROTOCOL=https
       - NODE_ENV=production
+      - N8N_PROXY_HOPS=1
       - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
       - DB_TYPE=postgresdb
@@ -34,10 +40,10 @@ services:
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=n8n_db
       - DB_POSTGRESDB_USER=n8n_user
-      - DB_POSTGRESDB_PASSWORD=Alex_197754
+      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD}
     volumes:
       - n8n_data:/home/node/.n8n
-      - /home/sasha/n8n-local-files:/files
+      - /home/sasha/n8n-local-files:/home/node/.n8n-files:rw
     networks:
       - n8n_default
 
