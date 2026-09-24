@@ -1,17 +1,21 @@
 services:
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:2.40.5
     user: "1000:1000"
+    restart: always
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: always
+
+    # Оставляем доступ с самого VPS для диагностики,
+    # но закрываем прямой :5678 из интернета.
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
 
     labels:
       - traefik.enable=true
       - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
-      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+      - traefik.http.services.n8n.loadbalancer.server.port=5678
       - traefik.http.routers.n8n.tls=true
       - traefik.http.routers.n8n.entrypoints=web,websecure
       - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
@@ -24,27 +28,58 @@ services:
       - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
       - traefik.http.middlewares.n8n.headers.STSPreload=true
       - traefik.http.routers.n8n.middlewares=n8n@docker
+
     environment:
-     # - N8N_RESTRICT_FILE_ACCESS_TO=/home/node/.n8n-files,/home/node/.n8n
-      - NODES_EXCLUDE=[]
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
-      - N8N_STORAGE_PATH=/home/node/.n8n-files/temp
-      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=https
-      - NODE_ENV=production
-      - N8N_PROXY_HOPS=1
-      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
-      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=n8n_db
-      - DB_POSTGRESDB_USER=n8n_user
-      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD}
+      NODES_EXCLUDE: "[]"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "false"
+      N8N_STORAGE_PATH: /home/node/.n8n-files/temp
+
+      N8N_HOST: ${SUBDOMAIN}.${DOMAIN_NAME}
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: https
+      NODE_ENV: production
+
+      N8N_PROXY_HOPS: "1"
+      N8N_WEBHOOK_URL: https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
+
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: n8n_db
+      DB_POSTGRESDB_USER: n8n_user
+      DB_POSTGRESDB_PASSWORD: ${DB_PASSWORD}
+
+      # External task runners
+      N8N_RUNNERS_MODE: external
+      N8N_RUNNERS_BROKER_LISTEN_ADDRESS: 0.0.0.0
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
+
+      # Сохраняем нынешнее поведение: 5 минут.
+      N8N_RUNNERS_TASK_TIMEOUT: "300"
+
+      # Явно определяем поведение community packages.
+      # Если unverified community nodes тебе нужны — оставь true.
+      N8N_UNVERIFIED_PACKAGES_ENABLED: "true"
+
     volumes:
       - n8n_data:/home/node/.n8n
       - /home/sasha/n8n-local-files:/home/node/.n8n-files:rw
+
+    networks:
+      - n8n_default
+
+  n8n-runners:
+    image: n8nio/runners:2.40.5
+    restart: always
+
+    environment:
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
+      N8N_RUNNERS_TASK_BROKER_URI: http://n8n:5679
+
+    depends_on:
+      - n8n
+
     networks:
       - n8n_default
 
