@@ -65,7 +65,7 @@ services:
       # Добавляем Assistant
       N8N_ENABLED_MODULES: instance-ai
 
-      N8N_INSTANCE_AI_MODEL: gpt-5.5
+      N8N_INSTANCE_AI_MODEL: gpt-5.6-luna
       N8N_INSTANCE_AI_REASONING_EFFORT: low
       N8N_INSTANCE_AI_MODEL_URL: http://auth2api:8317/v1
       N8N_INSTANCE_AI_MODEL_API_KEY: ${AUTH2API_API_KEY}
